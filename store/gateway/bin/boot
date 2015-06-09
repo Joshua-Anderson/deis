@@ -82,10 +82,10 @@ if [[ ! -z $EXTERNAL_PORT ]]; then
   set +e
 
   # wait for the service to become available on PUBLISH port
-  sleep 1 && while [[ -z $(netstat -lnt | awk "\$6 == \"LISTEN\" && \$4 ~ \".$PUBLISH\" && \$1 ~ \"$PROTO.?\"") ]] ; do sleep 1; done
+  sleep 1 && while [[ -z $(/bin/netstat -lnt | /usr/bin/awk "\$6 == \"LISTEN\" && \$4 ~ \".$PUBLISH\" && \$1 ~ \"$PROTO.?\"") ]] ; do sleep 1; done
 
   # while the port is listening, publish to etcd
-  while [[ ! -z $(netstat -lnt | awk "\$6 == \"LISTEN\" && \$4 ~ \".$PUBLISH\" && \$1 ~ \"$PROTO.?\"") ]] ; do
+  while [[ ! -z $(/bin/netstat -lnt | /usr/bin/awk "\$6 == \"LISTEN\" && \$4 ~ \".$PUBLISH\" && \$1 ~ \"$PROTO.?\"") ]] ; do
     if etcdctl --no-sync -C $ETCD mk ${ETCD_PATH}/masterLock $HOST --ttl $ETCD_TTL >/dev/null 2>&1 \
     || [[ `etcdctl --no-sync -C $ETCD get ${ETCD_PATH}/masterLock` == "$HOST" ]] ; then
       etcdctl --no-sync -C $ETCD set $ETCD_PATH/host $HOST --ttl $ETCD_TTL >/dev/null

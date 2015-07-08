@@ -4,7 +4,7 @@ include ../includes.mk
 repo_path = github.com/deis/deis/client-go
 
 GO_FILES = $(wildcard *.go)
-GO_PACKAGES = parser cmd controller/api controller/client controller/models/apps controller/models/users controller/models/config
+GO_PACKAGES = parser cmd controller/api controller/client $(wildcard controller/models/*)
 GO_PACKAGES_REPO_PATH = $(addprefix $(repo_path)/,$(GO_PACKAGES))
 
 COMPONENT = $(notdir $(repo_path))

@@ -39,6 +39,7 @@ func Register(controllerURL url.URL, username string, password string, email str
 	res, err := rawRequest(client, "POST", controllerURL.String(), bytes.NewBuffer(body), headers, 201)
 
 	if err != nil {
+		fmt.Println("Registration failed:")
 		return err
 	}
 	defer res.Body.Close()
@@ -135,7 +136,7 @@ func Passwd(username string, password string, newPassword string) error {
 		return err
 	}
 
-	fmt.Println("Password change succeeded.")
+	fmt.Println("Password change succeeded")
 	return nil
 }
 

@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
+	"path"
 	"strings"
 )
 
@@ -73,7 +75,8 @@ func (c Client) DetectApp() (string, error) {
 	remote, err := c.findRemote()
 
 	if err != nil {
-		return "", err
+		dir, err := os.Getwd()
+		return strings.ToLower(path.Base(dir)), err
 	}
 
 	ss := strings.Split(remote, "/")

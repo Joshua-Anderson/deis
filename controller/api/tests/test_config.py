@@ -12,6 +12,8 @@ import logging
 import requests
 
 from django.contrib.auth.models import User
+from django.conf import settings
+from django.test.utils import override_settings
 from django.test import TransactionTestCase
 import etcd
 import mock
@@ -60,6 +62,7 @@ class ConfigTest(TransactionTestCase):
         response = self.client.post(url, HTTP_AUTHORIZATION='token {}'.format(self.token))
         self.assertEqual(response.status_code, 201)
         self.app = App.objects.all()[0]
+        settings.DEFAULT_PERMISSIONS_APP_MANAGEMENT = False
 
     @mock.patch('requests.post', mock_status_ok)
     def test_config(self):
@@ -253,6 +256,7 @@ class ConfigTest(TransactionTestCase):
         self.assertEqual(str(config), "{}-{}".format(config5['app'], config5['uuid'][:7]))
 
     @mock.patch('requests.post', mock_status_ok)
+    @override_settings(DEFAULT_PERMISSIONS_APPS=True)
     def test_valid_config_keys(self):
         """Test that valid config keys are accepted.
         """
@@ -271,6 +275,7 @@ class ConfigTest(TransactionTestCase):
             self.assertIn(k, resp.data['values'])
 
     @mock.patch('requests.post', mock_status_ok)
+    @override_settings(DEFAULT_PERMISSIONS_APPS=True)
     def test_invalid_config_keys(self):
         """Test that invalid config keys are rejected.
         """
@@ -288,6 +293,7 @@ class ConfigTest(TransactionTestCase):
             self.assertEqual(resp.status_code, 400)
 
     @mock.patch('requests.post', mock_status_ok)
+    @override_settings(DEFAULT_PERMISSIONS_APPS=True)
     def test_admin_can_create_config_on_other_apps(self):
         """If a non-admin creates an app, an administrator should be able to set config
         values for that app.
@@ -543,6 +549,7 @@ class ConfigTest(TransactionTestCase):
         response = self.client.delete(url, HTTP_AUTHORIZATION='token {}'.format(self.token))
         self.assertEqual(response.status_code, 405)
 
+    @override_settings(DEFAULT_PERMISSIONS_APPS=True)
     def test_config_owner_is_requesting_user(self):
         """
         Ensure that setting the config value is owned by the requesting user

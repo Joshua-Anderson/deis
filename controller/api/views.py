@@ -175,7 +175,9 @@ class AppViewSet(BaseDeisViewSet):
         interact with.
         """
         queryset = super(AppViewSet, self).get_queryset(**kwargs) | \
-            get_objects_for_user(self.request.user, 'api.use_app')
+            get_objects_for_user(self.request.user, 'api.use_app') \
+            if not settings.DEFAULT_PERMISSIONS_APP_MANAGEMENT \
+            else self.model.objects.all()
         instance = self.filter_queryset(queryset)
         page = self.paginate_queryset(instance)
         if page is not None:
@@ -184,12 +186,21 @@ class AppViewSet(BaseDeisViewSet):
             serializer = self.get_serializer(instance, many=True)
         return Response(serializer.data)
 
+    def create(self, request, **kwargs):
+        if not permissions.Apps.has_permission(permissions.Apps(), request, self):
+            raise PermissionDenied()
+        return super(AppViewSet, self).create(request, **kwargs)
+
     def post_save(self, app):
         app.create()
 
     def scale(self, request, **kwargs):
         new_structure = {}
         app = self.get_object()
+
+        if not permissions.can_scale(request, app):
+            raise PermissionDenied()
+
         try:
             for target, count in request.data.viewitems():
                 new_structure[target] = int(count)
@@ -226,6 +237,10 @@ class AppViewSet(BaseDeisViewSet):
 
     def run(self, request, **kwargs):
         app = self.get_object()
+
+        if not permissions.can_run(request, app):
+            raise PermissionDenied()
+
         try:
             output_and_rc = app.run(self.request.user, request.data['command'])
         except EnvironmentError as e:
@@ -252,6 +267,13 @@ class BuildViewSet(ReleasableViewSet):
     model = models.Build
     serializer_class = serializers.BuildSerializer
 
+    def create(self, request, **kwargs):
+        app = get_object_or_404(models.App, id=self.kwargs['id'])
+
+        if not permissions.can_push(request, app):
+                raise PermissionDenied()
+        return super(BuildViewSet, self).create(request, **kwargs)
+
     def post_save(self, build):
         self.release = build.create(self.request.user)
         super(BuildViewSet, self).post_save(build)
@@ -261,6 +283,7 @@ class ConfigViewSet(ReleasableViewSet):
     """A viewset for interacting with Config objects."""
     model = models.Config
     serializer_class = serializers.ConfigSerializer
+    permission_classes = [IsAuthenticated, permissions.IsAppUser, permissions.Config]
 
     def post_save(self, config):
         release = config.app.release_set.latest()
@@ -303,6 +326,7 @@ class DomainViewSet(AppResourceViewSet):
     """A viewset for interacting with Domain objects."""
     model = models.Domain
     serializer_class = serializers.DomainSerializer
+    permission_classes = [IsAuthenticated, permissions.IsAppUser, permissions.Config]
 
     def get_object(self, **kwargs):
         qs = self.get_queryset(**kwargs)
@@ -313,6 +337,7 @@ class CertificateViewSet(BaseDeisViewSet):
     """A viewset for interacting with Domain objects."""
     model = models.Certificate
     serializer_class = serializers.CertificateSerializer
+    permission_classes = [IsAuthenticated, permissions.Certs]
 
     def get_object(self, **kwargs):
         """Retrieve domain certificate by common name"""
@@ -369,8 +394,8 @@ class PushHookViewSet(BaseHookViewSet):
     def create(self, request, *args, **kwargs):
         app = get_object_or_404(models.App, id=request.data['receive_repo'])
         request.user = get_object_or_404(User, username=request.data['receive_user'])
-        # check the user is authorized for this app
-        if not permissions.is_app_user(request, app):
+        # check if the user is authorized for this app
+        if not permissions.can_push(request, app):
             raise PermissionDenied()
         request.data['app'] = app
         request.data['owner'] = request.user
@@ -385,7 +410,7 @@ class BuildHookViewSet(BaseHookViewSet):
     def create(self, request, *args, **kwargs):
         app = get_object_or_404(models.App, id=request.data['receive_repo'])
         self.user = request.user = get_object_or_404(User, username=request.data['receive_user'])
-        # check the user is authorized for this app
+        # check if the user is authorized for this app
         if not permissions.is_app_user(request, app):
             raise PermissionDenied()
         request.data['app'] = app
@@ -408,7 +433,7 @@ class ConfigHookViewSet(BaseHookViewSet):
     def create(self, request, *args, **kwargs):
         app = get_object_or_404(models.App, id=request.data['receive_repo'])
         request.user = get_object_or_404(User, username=request.data['receive_user'])
-        # check the user is authorized for this app
+        # check if the user is authorized for this app
         if not permissions.is_app_user(request, app):
             raise PermissionDenied()
         config = app.release_set.latest().config

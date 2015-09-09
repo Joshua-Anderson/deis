@@ -10,6 +10,7 @@ GO_PACKAGES_REPO_PATH = $(addprefix $(repo_path)/,$(GO_PACKAGES))
 COMPONENT = $(notdir $(repo_path))
 IMAGE =  $(IMAGE_PREFIX)/$(COMPONENT):$(BUILD_TAG)
 
+.PHONY: build
 build:
 	CGO_ENABLED=0 godep go build -a -installsuffix cgo -ldflags '-s' -o deis .
 	@$(call check-static-binary,deis)
